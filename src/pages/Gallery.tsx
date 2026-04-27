@@ -10,6 +10,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 type Item = { src: string; cat: string; alt: string };
 type MediaAsset = { id: string; public_url: string; kind: "image" | "video"; filename: string; alt_text: string | null; gallery_category: string | null };
 type MediaMetric = { width: number; height: number; label: string };
+const debugGridClass = "bg-[linear-gradient(to_right,hsl(var(--primary)/0.18)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--primary)/0.18)_1px,transparent_1px)] bg-[size:24px_24px]";
 const allDefaults: Item[] = [
   { src: images.bedroom, cat: "Bedrooms", alt: "Master bedroom" },
   { src: images.bedroom2, cat: "Bedrooms", alt: "Second bedroom" },
@@ -47,6 +48,7 @@ const Gallery = () => {
   const videoRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [photoMetrics, setPhotoMetrics] = useState<Record<number, MediaMetric>>({});
   const [videoMetrics, setVideoMetrics] = useState<Record<number, MediaMetric>>({});
+  const [debugLayout, setDebugLayout] = useState(false);
   const publishedPhotos = publishedMedia.filter((item) => item.kind === "image");
   const publishedVideos = publishedMedia.filter((item) => item.kind === "video");
   const cats = ["All", ...Array.from(new Set([...baseCats.slice(1), ...publishedPhotos.map((item) => item.gallery_category).filter(Boolean) as string[]]))];
@@ -102,6 +104,19 @@ const Gallery = () => {
               <TabsTrigger value="videos">Videos</TabsTrigger>
             </TabsList>
 
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setDebugLayout((value) => !value)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-smooth ring-1 ring-border ${
+                  debugLayout ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/70"
+                }`}
+                aria-pressed={debugLayout}
+              >
+                Debug layout
+              </button>
+            </div>
+
             <TabsContent value="photos" className="space-y-10">
               <div className="flex flex-wrap gap-2 justify-center">
                 {cats.map((c) => (
@@ -117,7 +132,7 @@ const Gallery = () => {
                 ))}
               </div>
 
-              <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+              <div className={`columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4 ${debugLayout ? `rounded-2xl p-2 ${debugGridClass}` : ""}`}>
                 {filtered.map((img, i) => (
                   <button
                     key={`${img.src}-${i}`}
@@ -125,10 +140,10 @@ const Gallery = () => {
                       photoRefs.current[i] = node;
                     }}
                     onClick={() => setOpenIndex(i)}
-                    className="relative block w-full overflow-hidden rounded-2xl group break-inside-avoid"
+                    className={`relative block w-full overflow-hidden rounded-2xl group break-inside-avoid ${debugLayout ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                   >
-                    {photoMetrics[i] && (
-                      <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 font-mono text-[11px] leading-tight text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm sm:hidden">
+                    {(debugLayout || photoMetrics[i]) && photoMetrics[i] && (
+                      <div className={`absolute left-3 top-3 z-10 rounded-md px-2 py-1 font-mono text-[11px] leading-tight shadow-lg ring-1 backdrop-blur-sm ${debugLayout ? "bg-primary text-primary-foreground ring-primary" : "bg-background/90 text-foreground ring-border sm:hidden"}`}>
                         <div>{photoMetrics[i].width}×{photoMetrics[i].height}</div>
                         <div>{photoMetrics[i].label}</div>
                       </div>
@@ -139,24 +154,24 @@ const Gallery = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="videos">
+            <TabsContent value="videos" className={debugLayout ? `rounded-2xl p-2 ${debugGridClass}` : ""}>
               {publishedVideos.length === 0 ? (
                 <p className="py-16 text-center text-muted-foreground">No published videos yet.</p>
               ) : (
                 <Carousel opts={{ align: "start" }} className="mx-auto max-w-5xl">
                   <CarouselContent>
-                  {publishedVideos.map((video) => (
+                  {publishedVideos.map((video, index) => (
                     <CarouselItem key={video.id} className="sm:basis-1/2 lg:basis-1/3">
                       <div
                         ref={(node) => {
-                          videoRefs.current[publishedVideos.indexOf(video)] = node;
+                          videoRefs.current[index] = node;
                         }}
-                        className="relative"
+                        className={`relative rounded-2xl ${debugLayout ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                       >
-                        {videoMetrics[publishedVideos.indexOf(video)] && (
-                          <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 font-mono text-[11px] leading-tight text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm sm:hidden">
-                            <div>{videoMetrics[publishedVideos.indexOf(video)].width}×{videoMetrics[publishedVideos.indexOf(video)].height}</div>
-                            <div>{videoMetrics[publishedVideos.indexOf(video)].label}</div>
+                        {(debugLayout || videoMetrics[index]) && videoMetrics[index] && (
+                          <div className={`absolute left-3 top-3 z-10 rounded-md px-2 py-1 font-mono text-[11px] leading-tight shadow-lg ring-1 backdrop-blur-sm ${debugLayout ? "bg-primary text-primary-foreground ring-primary" : "bg-background/90 text-foreground ring-border sm:hidden"}`}>
+                            <div>{videoMetrics[index].width}×{videoMetrics[index].height}</div>
+                            <div>{videoMetrics[index].label}</div>
                           </div>
                         )}
                         <video src={video.public_url} controls preload="metadata" className="aspect-video w-full rounded-2xl bg-secondary object-cover" />
