@@ -1,6 +1,6 @@
 import { PageHero } from "@/components/sections/PageHero";
 import { images } from "@/data/site";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSiteContent, resolveImage } from "@/hooks/useSiteContent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +9,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 
 type Item = { src: string; cat: string; alt: string };
 type MediaAsset = { id: string; public_url: string; kind: "image" | "video"; filename: string; alt_text: string | null; gallery_category: string | null };
+type MediaMetric = { width: number; height: number; label: string };
 const allDefaults: Item[] = [
   { src: images.bedroom, cat: "Bedrooms", alt: "Master bedroom" },
   { src: images.bedroom2, cat: "Bedrooms", alt: "Second bedroom" },
@@ -42,6 +43,10 @@ const Gallery = () => {
   const [active, setActive] = useState("All");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [publishedMedia, setPublishedMedia] = useState<MediaAsset[]>([]);
+  const photoRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const videoRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [photoMetrics, setPhotoMetrics] = useState<Record<number, MediaMetric>>({});
+  const [videoMetrics, setVideoMetrics] = useState<Record<number, MediaMetric>>({});
   const publishedPhotos = publishedMedia.filter((item) => item.kind === "image");
   const publishedVideos = publishedMedia.filter((item) => item.kind === "video");
   const cats = ["All", ...Array.from(new Set([...baseCats.slice(1), ...publishedPhotos.map((item) => item.gallery_category).filter(Boolean) as string[]]))];
@@ -56,6 +61,29 @@ const Gallery = () => {
       setPublishedMedia((data as MediaAsset[]) ?? []);
     });
   }, []);
+
+  useEffect(() => {
+    const updateMetrics = () => {
+      const nextPhotoMetrics = photoRefs.current.reduce<Record<number, MediaMetric>>((acc, tile, index) => {
+        if (!tile) return acc;
+        const rect = tile.getBoundingClientRect();
+        acc[index] = { width: Math.round(rect.width), height: Math.round(rect.height), label: filtered[index]?.cat ?? "Photo" };
+        return acc;
+      }, {});
+      const nextVideoMetrics = videoRefs.current.reduce<Record<number, MediaMetric>>((acc, tile, index) => {
+        if (!tile) return acc;
+        const rect = tile.getBoundingClientRect();
+        acc[index] = { width: Math.round(rect.width), height: Math.round(rect.height), label: "Video" };
+        return acc;
+      }, {});
+      setPhotoMetrics(nextPhotoMetrics);
+      setVideoMetrics(nextVideoMetrics);
+    };
+
+    updateMetrics();
+    window.addEventListener("resize", updateMetrics);
+    return () => window.removeEventListener("resize", updateMetrics);
+  }, [filtered, publishedVideos]);
 
   return (
     <>
@@ -93,9 +121,18 @@ const Gallery = () => {
                 {filtered.map((img, i) => (
                   <button
                     key={`${img.src}-${i}`}
+                    ref={(node) => {
+                      photoRefs.current[i] = node;
+                    }}
                     onClick={() => setOpenIndex(i)}
-                    className="block w-full overflow-hidden rounded-2xl group break-inside-avoid"
+                    className="relative block w-full overflow-hidden rounded-2xl group break-inside-avoid"
                   >
+                    {photoMetrics[i] && (
+                      <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 font-mono text-[11px] leading-tight text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm sm:hidden">
+                        <div>{photoMetrics[i].width}×{photoMetrics[i].height}</div>
+                        <div>{photoMetrics[i].label}</div>
+                      </div>
+                    )}
                     <img src={img.src} alt={img.alt} loading="lazy" className="w-full transition-elegant group-hover:scale-105" />
                   </button>
                 ))}
@@ -110,7 +147,20 @@ const Gallery = () => {
                   <CarouselContent>
                   {publishedVideos.map((video) => (
                     <CarouselItem key={video.id} className="sm:basis-1/2 lg:basis-1/3">
-                      <video src={video.public_url} controls preload="metadata" className="aspect-video w-full rounded-2xl bg-secondary object-cover" />
+                      <div
+                        ref={(node) => {
+                          videoRefs.current[publishedVideos.indexOf(video)] = node;
+                        }}
+                        className="relative"
+                      >
+                        {videoMetrics[publishedVideos.indexOf(video)] && (
+                          <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 font-mono text-[11px] leading-tight text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm sm:hidden">
+                            <div>{videoMetrics[publishedVideos.indexOf(video)].width}×{videoMetrics[publishedVideos.indexOf(video)].height}</div>
+                            <div>{videoMetrics[publishedVideos.indexOf(video)].label}</div>
+                          </div>
+                        )}
+                        <video src={video.public_url} controls preload="metadata" className="aspect-video w-full rounded-2xl bg-secondary object-cover" />
+                      </div>
                     </CarouselItem>
                   ))}
                   </CarouselContent>
