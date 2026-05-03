@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Smartphone, CreditCard, Loader2 } from "lucide-react";
+import { Smartphone, CreditCard, Loader2, Copy, Check, UserCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,13 @@ import {
   startMpesaPayment,
   startPaypalPayment,
   startCardPayment,
+  submitManualMpesa,
   type PaymentMethod,
   type PaymentContext,
 } from "@/lib/payments";
+
+const JOEL_MPESA_NUMBER = "0722 51765";
+const JOEL_MPESA_NAME = "Joel";
 
 interface Props {
   ctx: PaymentContext;
